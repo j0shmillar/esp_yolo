@@ -30,3 +30,23 @@
 *.exe
 *.out
 *.app
+
+# Cscope and tags
+*.cscope
+*.diff
+cscope.*
+tags
+TAGS
+
+# Related to ESP-IDF
+build
+managed_components
+sdkconfig
+sdkconfig.old
+dependencies.lock
+*.old
+*.s
+.DS_Store
+*.orig
+*.swp
+*.lock
