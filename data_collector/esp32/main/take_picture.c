@@ -1,0 +1,188 @@
+/**
+ * This example takes a picture every 5s and print its size on serial monitor.
+ */
+
+// =============================== SETUP ======================================
+
+// 1. Board setup (Uncomment):
+// #define BOARD_WROVER_KIT
+// #define BOARD_ESP32CAM_AITHINKER
+
+/**
+ * 2. Kconfig setup
+ *
+ * If you have a Kconfig file, copy the content from
+ *  https://github.com/espressif/esp32-camera/blob/master/Kconfig into it.
+ * In case you haven't, copy and paste this Kconfig file inside the src directory.
+ * This Kconfig file has definitions that allows more control over the camera and
+ * how it will be initialized.
+ */
+
+/**
+ * 3. Enable PSRAM on sdkconfig:
+ *
+ * CONFIG_ESP32_SPIRAM_SUPPORT=y
+ *
+ * More info on
+ * https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/kconfig.html#config-esp32-spiram-support
+ */
+
+// ================================ CODE ======================================
+
+#include <esp_log.h>
+#include <esp_system.h>
+#include <nvs_flash.h>
+#include <sys/param.h>
+#include <string.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+// support IDF 5.x
+#ifndef portTICK_RATE_MS
+#define portTICK_RATE_MS portTICK_PERIOD_MS
+#endif
+
+#include "esp_camera.h"
+
+#define CAM_MODULE_NAME "ESP-EYE"
+#define CAM_PIN_PWDN -1
+#define CAM_PIN_RESET -1
+#define CAM_PIN_XCLK 4
+#define CAM_PIN_SIOD 18
+#define CAM_PIN_SIOC 23
+
+#define CAM_PIN_D7 36
+#define CAM_PIN_D6 37
+#define CAM_PIN_D5 38
+#define CAM_PIN_D4 39
+#define CAM_PIN_D3 35
+#define CAM_PIN_D2 14
+#define CAM_PIN_D1 13
+#define CAM_PIN_D0 34
+#define CAM_PIN_VSYNC 5
+#define CAM_PIN_HREF 27
+#define CAM_PIN_PCLK 25
+
+static const char *TAG = "example:take_picture";
+
+#if ESP_CAMERA_SUPPORTED
+// static camera_config_t camera_config = {
+//     .pin_pwdn = CAM_PIN_PWDN,
+//     .pin_reset = CAM_PIN_RESET,
+//     .pin_xclk = CAM_PIN_XCLK,
+//     .pin_sccb_sda = CAM_PIN_SIOD,
+//     .pin_sccb_scl = CAM_PIN_SIOC,
+// 
+//     .pin_d7 = CAM_PIN_D7,
+//     .pin_d6 = CAM_PIN_D6,
+//     .pin_d5 = CAM_PIN_D5,
+//     .pin_d4 = CAM_PIN_D4,
+//     .pin_d3 = CAM_PIN_D3,
+//     .pin_d2 = CAM_PIN_D2,
+//     .pin_d1 = CAM_PIN_D1,
+//     .pin_d0 = CAM_PIN_D0,
+//     .pin_vsync = CAM_PIN_VSYNC,
+//     .pin_href = CAM_PIN_HREF,
+//     .pin_pclk = CAM_PIN_PCLK,
+// 
+//     //XCLK 20MHz or 10MHz for OV2640 double FPS (Experimental)
+// //     .xclk_freq_hz = 20000000,
+//     .xclk_freq_hz = 15000000,
+//     .ledc_timer = LEDC_TIMER_0,
+//     .ledc_channel = LEDC_CHANNEL_0,
+// 
+// //     .pixel_format = PIXFORMAT_RGB565, //YUV422,GRAYSCALE,RGB565,JPEG
+//     .pixel_format = PIXFORMAT_GRAYSCALE, 
+//     .frame_size = FRAMESIZE_96X96,
+// //     .frame_size = FRAMESIZE_QVGA,    //QQVGA-UXGA, For ESP32, do not use sizes above QVGA when not JPEG. The performance of the ESP32-S series has improved a lot, but JPEG mode always gives better frame rates.
+// 
+//     .jpeg_quality = 10, //0-63, for OV series camera sensors, lower number means higher quality
+//     .fb_count = 1,       //When jpeg mode is used, if fb_count more than one, the driver will work in continuous mode.
+//     .grab_mode = CAMERA_GRAB_WHEN_EMPTY,
+//     .fb_location = CAMERA_FB_IN_DRAM,
+// };
+// 
+static camera_config_t camera_config = {
+  .ledc_channel = LEDC_CHANNEL_0,
+  .ledc_timer = LEDC_TIMER_0,
+  .pin_d0 = CAM_PIN_D0,
+  .pin_d1 = CAM_PIN_D1,
+  .pin_d2 = CAM_PIN_D2,
+  .pin_d3 = CAM_PIN_D3,
+  .pin_d4 = CAM_PIN_D4,
+  .pin_d5 = CAM_PIN_D5,
+  .pin_d6 = CAM_PIN_D6,
+  .pin_d7 = CAM_PIN_D7,
+  .pin_xclk     = CAM_PIN_XCLK,
+  .pin_pclk     = CAM_PIN_PCLK,
+  .pin_vsync    = CAM_PIN_VSYNC,
+  .pin_href     = CAM_PIN_HREF,
+  .pin_sscb_sda = CAM_PIN_SIOD,
+  .pin_sscb_scl = CAM_PIN_SIOC,
+  .pin_pwdn     = CAM_PIN_PWDN,
+  .pin_reset    = CAM_PIN_RESET,
+  .xclk_freq_hz = 15000000,
+  .jpeg_quality = 10,
+  .fb_count = 2,
+  .fb_location = CAMERA_FB_IN_DRAM,
+  .pixel_format = PIXFORMAT_GRAYSCALE,
+  .frame_size = FRAMESIZE_96X96
+  };
+
+  // Pixel format and frame size are specific configurations options for this application.
+  // Frame size must be 96x96 pixels to match the trained model.
+  // Pixel format defaults to grayscale to match the trained model.
+  // With display support enabled, the pixel format is RGB565 to match the display. The frame is converted to grayscale before it is passed to the trained model.
+//   config.pixel_format = CAMERA_PIXEL_FORMAT;
+//   config.frame_size = CAMERA_FRAME_SIZE;
+
+
+static esp_err_t init_camera(void)
+{
+
+    gpio_config_t conf;
+    conf.mode = GPIO_MODE_INPUT;
+    conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    conf.intr_type = GPIO_INTR_DISABLE;
+    conf.pin_bit_mask = 1LL << 13;
+    gpio_config(&conf);
+    conf.pin_bit_mask = 1LL << 14;
+    gpio_config(&conf);
+
+    //initialize the camera
+    esp_err_t err = esp_camera_init(&camera_config);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Camera Init Failed");
+        return err;
+    }
+
+    return ESP_OK;
+}
+#endif
+
+void app_main(void)
+{
+#if ESP_CAMERA_SUPPORTED
+    if(ESP_OK != init_camera()) {
+        return;
+    }
+
+    while (1)
+    {
+        ESP_LOGI(TAG, "Taking picture...");
+        camera_fb_t *pic = esp_camera_fb_get();
+
+        // use pic->buf to access the image
+        ESP_LOGI(TAG, "Picture taken! Its size was: %zu bytes", pic->len);
+        esp_camera_fb_return(pic);
+
+        vTaskDelay(5000 / portTICK_RATE_MS);
+    }
+#else
+    ESP_LOGE(TAG, "Camera support is not available for this chip");
+    return;
+#endif
+}
