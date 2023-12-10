@@ -3,28 +3,12 @@
 #include "esp_netif.h"
 #include <cstring>
 
-#define EXAMPLE_WIFI_SSID CONFIG_ESP_WIFI_SSID
-#define EXAMPLE_WIFI_PASSWORD CONFIG_ESP_WIFI_PASSWORD
-
-#define EXAMPLE_WIFI_MAXIMUM_RETRY 5
-#define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_BOTH
-#define EXAMPLE_H2E_IDENTIFIER ""
-#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_PSK
-
+static const char *TAG = "WIFI_MODULE";
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
-
-/* The event group allows multiple bits for each event, but we only care about two events:
- * - we are connected to the AP with an IP
- * - we failed to connect after the maximum amount of retries */
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
-
 /* esp netif object representing the WIFI station */
 static esp_netif_t *sta_netif = NULL;
-static const char *TAG = "WIFI_MODULE";
 static int s_retry_num = 0;
-static bool is_connected = false;
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -44,13 +28,15 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
-        is_connected = true;
+        auto connected = static_cast<bool*>(arg);
+        *connected = true;
+
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
 
-
 Wifi::Wifi() {
+    m_connected = false;
     s_wifi_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -63,15 +49,16 @@ Wifi::Wifi() {
 
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
+
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
                                                         &event_handler,
-                                                        NULL,
+                                                        &m_connected,
                                                         &instance_any_id));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                                                         IP_EVENT_STA_GOT_IP,
                                                         &event_handler,
-                                                        NULL,
+                                                        &m_connected,
                                                         &instance_got_ip));
 
     wifi_config_t wifi_config = {
@@ -119,24 +106,15 @@ Wifi::Wifi() {
     }
 }
 
-// void Wifi::connect() {
-//     if ( esp_wifi_connect() != ESP_OK ) {
-//         ESP_LOGE(TAG, "Failed to connect");
-//         return;
-//     }
-//     ESP_LOGI(TAG, "Connected to the WiFi network");
-// }
-// 
+bool Wifi::isConnected() {
+    return m_connected;
+}
+
 void Wifi::showRSSI() {
 
     esp_netif_ip_info_t ip;
     memset(&ip, 0, sizeof(esp_netif_ip_info_t));
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-
-    if (!is_connected) {
-        ESP_LOGE(TAG, "Not connected to the WiFi network");
-        return;
-    }
     
     if (esp_netif_get_ip_info(sta_netif, &ip) == 0) {
         ESP_LOGI(TAG, "~~~~~~~~~~~");

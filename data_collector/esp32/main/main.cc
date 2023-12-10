@@ -1,4 +1,7 @@
 #include "wifi.h"
+#include "stream_server.h"
+
+static const char *TAG = "MAIN";
 
 void wifi_task(void) {
     Wifi wifi;
@@ -6,11 +9,25 @@ void wifi_task(void) {
     while (1) {
         vTaskDelay(5000 / portTICK_PERIOD_MS);
 
-        wifi.showRSSI();
+        if (!wifi.isConnected()) {
+            ESP_LOGE(TAG, "Failed to connect to the WiFi network");
+        } else {
+            ESP_LOGI(TAG, "Connected to the WiFi network");
+            wifi.showRSSI();
+        }
     }
-
     wifi.disconnect();
 }
+// 
+// void mainTask(void) {
+//     Wifi wifi;
+//     StreamServer streamServer;
+// 
+//     while (1) {
+//         vTaskDelay(5000 / portTICK_PERIOD_MS);
+//     }
+// }
+// 
 
 extern "C" void app_main() {
     /* Initialize NVS — it is used to store PHY calibration data */
