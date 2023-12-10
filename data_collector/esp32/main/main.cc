@@ -18,16 +18,21 @@ void wifi_task(void) {
     }
     wifi.disconnect();
 }
-// 
-// void mainTask(void) {
-//     Wifi wifi;
-//     StreamServer streamServer;
-// 
-//     while (1) {
-//         vTaskDelay(5000 / portTICK_PERIOD_MS);
-//     }
-// }
-// 
+
+void mainTask(void) {
+    Wifi wifi;
+    StreamServer streamServer;
+
+    if (!wifi.isConnected()) {
+        ESP_LOGE(TAG, "Failed to connect to the WiFi network");
+        return ;
+    }
+
+    streamServer.Start();
+    while (1) {
+    }
+}
+
 
 extern "C" void app_main() {
     /* Initialize NVS — it is used to store PHY calibration data */
@@ -38,6 +43,8 @@ extern "C" void app_main() {
     }
     ESP_ERROR_CHECK( ret );
 
-  xTaskCreate((TaskFunction_t)&wifi_task, "wifi_task", 4 * 1024, NULL, 8, NULL);
-  vTaskDelete(NULL);
+//     mainTask();
+//   xTaskCreate((TaskFunction_t)&wifi_task, "wifi_task", 4 * 1024, NULL, 8, NULL);
+    xTaskCreate((TaskFunction_t)&mainTask, "mainTask", 4 * 1024, NULL, 8, NULL);
+    vTaskDelete(NULL);
 }
