@@ -35,6 +35,7 @@ static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" 
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 static httpd_handle_t stream_httpd  = NULL;
+static httpd_handle_t picture_httpd = NULL;
 
 static camera_config_t camera_config = {
   .pin_pwdn     = CAM_PIN_PWDN,
@@ -65,8 +66,13 @@ static camera_config_t camera_config = {
   .jpeg_quality = 10,//0-63, for OV series camera sensors, lower number means higher quality
   .fb_count = 1, //When jpeg mode is used, if fb_count more than one, the driver will work in continuous mode.
   .fb_location  = CAMERA_FB_IN_DRAM, 
-  .grab_mode = CAMERA_GRAB_WHEN_EMPTY,
+  .grab_mode = CAMERA_GRAB_LATEST,
 };
+
+typedef struct {
+    httpd_req_t *req;
+    size_t len;
+} jpg_chunking_t;
 
 static esp_err_t init_camera(void)
 {
@@ -91,13 +97,20 @@ static esp_err_t init_camera(void)
     return ESP_OK;
 }
 
-// JPEG HTTP Stream
 esp_err_t jpg_stream_httpd_handler(httpd_req_t *req){
     camera_fb_t * fb = NULL;
     esp_err_t res = ESP_OK;
     size_t _jpg_buf_len;
     uint8_t * _jpg_buf;
     char * part_buf[64];
+
+//    xEventGroupClearBits(evGroup, 1);
+// 
+//    while(xEventGroupGetBits(evGroup) != 0)
+//    {
+//        vTaskDelay(100/portTICK_PERIOD_MS);
+//    }
+
     static int64_t last_frame = 0;
     if(!last_frame) {
         last_frame = esp_timer_get_time();
@@ -105,6 +118,7 @@ esp_err_t jpg_stream_httpd_handler(httpd_req_t *req){
 
     res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
     if(res != ESP_OK){
+        ESP_LOGE(TAG, "Error setting resp type");
         return res;
     }
 
@@ -152,77 +166,104 @@ esp_err_t jpg_stream_httpd_handler(httpd_req_t *req){
         ESP_LOGI(TAG, "MJPG: %luKB %lums (%.1ffps)",
             (uint32_t)(_jpg_buf_len/1024),
             (uint32_t)frame_time, 1000.0 / (uint32_t)frame_time);
+
+        // add 500ms delay to reduce the frame rate
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
+//     xEventGroupSetBits(evGroup, 1);
     last_frame = 0;
     return res;
 }
 
 // JPEG encoder
-// static size_t jpg_encode_stream(void * arg, size_t index, const void* data, size_t len){
-//     jpg_chunking_t *j = (jpg_chunking_t *)arg;
-//     if(!index){
-//         j->len = 0;
-//     }
-//     if(httpd_resp_send_chunk(j->req, (const char *)data, len) != ESP_OK){
-//         return 0;
-//     }
-//     j->len += len;
-//     return len;
-// }
-// 
+static size_t jpg_encode_stream(void * arg, size_t index, const void* data, size_t len){
+    jpg_chunking_t *j = (jpg_chunking_t *)arg;
+    if(!index){
+        j->len = 0;
+    }
+    if(httpd_resp_send_chunk(j->req, (const char *)data, len) != ESP_OK){
+        return 0;
+    }
+    j->len += len;
+    return len;
+}
+
 // JPEG HTTP Capture
-// esp_err_t jpg_httpd_handler(httpd_req_t *req){
-//     camera_fb_t * fb = NULL;
-//     esp_err_t res = ESP_OK;
-//     size_t fb_len = 0;
-//     int64_t fr_start = esp_timer_get_time();
-// 
-//     fb = esp_camera_fb_get();
-//     if (!fb) {
-//         ESP_LOGE(TAG, "Camera capture failed");
-//         httpd_resp_send_500(req);
-//         return ESP_FAIL;
-//     }
-//     res = httpd_resp_set_type(req, "image/jpeg");
-//     if(res == ESP_OK){
-//         res = httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
-//     }
-// 
-//     if(res == ESP_OK){
-//         if(fb->format == PIXFORMAT_JPEG){
-//             fb_len = fb->len;
-//             res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
-//         } else {
-//             jpg_chunking_t jchunk = {req, 0};
-//             res = frame2jpg_cb(fb, 80, jpg_encode_stream, &jchunk)?ESP_OK:ESP_FAIL;
-//             httpd_resp_send_chunk(req, NULL, 0);
-//             fb_len = jchunk.len;
-//         }
-//     }
-//     esp_camera_fb_return(fb);
-//     int64_t fr_end = esp_timer_get_time();
-//     ESP_LOGI(TAG, "JPG: %uKB %ums", (uint32_t)(fb_len/1024), (uint32_t)((fr_end - fr_start)/1000));
-//     return res;
-// }
+esp_err_t jpg_httpd_handler(httpd_req_t *req){
+    camera_fb_t * fb = NULL;
+    esp_err_t res = ESP_OK;
+    size_t fb_len = 0;
+    int64_t fr_start = esp_timer_get_time();
 
+    fb = esp_camera_fb_get();
+    if (!fb) {
+        ESP_LOGE(TAG, "Camera capture failed");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
 
-httpd_uri_t uri_get = {
+    res = httpd_resp_set_type(req, "image/jpeg");
+    if(res == ESP_OK){
+        res = httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
+    }
+
+    if(res == ESP_OK){
+        if(fb->format == PIXFORMAT_JPEG){
+            fb_len = fb->len;
+            res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
+        } else {
+            jpg_chunking_t jchunk = {req, 0};
+            res = frame2jpg_cb(fb, 80, jpg_encode_stream, &jchunk)?ESP_OK:ESP_FAIL;
+            httpd_resp_send_chunk(req, NULL, 0);
+            fb_len = jchunk.len;
+        }
+    }
+    esp_camera_fb_return(fb);
+    int64_t fr_end = esp_timer_get_time();
+    ESP_LOGI(TAG, "JPG: %luKB %lums", (uint32_t)(fb_len/1024), (uint32_t)((fr_end - fr_start)/1000));
+    return res;
+}
+
+httpd_uri_t uri_get_picture = {
+    .uri = "/picture",
+    .method = HTTP_GET,
+    .handler = jpg_httpd_handler,
+    .user_ctx = NULL
+};
+
+httpd_uri_t uri_stream = {
     .uri = "/",
     .method = HTTP_GET,
     .handler = jpg_stream_httpd_handler,
-    .user_ctx = NULL};
+    .user_ctx = NULL
+};
 
-httpd_handle_t setup_server(void)
+
+httpd_handle_t setup_stream_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
+    ESP_LOGI(TAG, "Starting stream server on port: '%d'", config.server_port);
     if (httpd_start(&stream_httpd , &config) == ESP_OK)
     {
-        httpd_register_uri_handler(stream_httpd , &uri_get);
+        httpd_register_uri_handler(stream_httpd , &uri_stream);
     }
-
     return stream_httpd;
+}
+
+httpd_handle_t setup_picture_server(void)
+{
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+    config.server_port += 1;
+    config.ctrl_port += 1;
+    ESP_LOGI(TAG, "Starting picture server on port: '%d'", config.server_port);
+    if (httpd_start(&picture_httpd , &config) == ESP_OK)
+    {
+        httpd_register_uri_handler(picture_httpd , &uri_get_picture);
+    }
+    return picture_httpd;
 }
 
 StreamServer::StreamServer(){
@@ -235,9 +276,13 @@ StreamServer::~StreamServer(){
 }
 
 void StreamServer::Start(){
-    httpd_handle_t stream_httpd = setup_server();
+    httpd_handle_t stream_httpd = setup_stream_server();
     if(stream_httpd == NULL){
         ESP_LOGE(TAG, "Failed to start stream server");
+    }
+    httpd_handle_t picture_httpd = setup_picture_server();
+    if(picture_httpd == NULL){
+        ESP_LOGE(TAG, "Failed to start picture server");
     }
 }
 
