@@ -45,6 +45,6 @@ extern "C" void app_main() {
 
 //     mainTask();
 //   xTaskCreate((TaskFunction_t)&wifi_task, "wifi_task", 4 * 1024, NULL, 8, NULL);
-    xTaskCreate((TaskFunction_t)&mainTask, "mainTask", 4 * 1024, NULL, 8, NULL);
+    xTaskCreate((TaskFunction_t)&mainTask, "mainTask", 4 * 1024, NULL, tskIDLE_PRIORITY, NULL);
     vTaskDelete(NULL);
 }
