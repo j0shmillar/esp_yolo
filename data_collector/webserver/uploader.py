@@ -24,9 +24,15 @@ def upload_file(label, remote_url, server_url):
         print(f"Request Exception: {e}")
 
 
-# Upload the image to your server
-your_label = "my_image.jpg"
-remote_image_url = "your-image-url" 
-your_server_url = "http://localhost:5000/upload"
+if __name__ == "__main__":
+    import argparse
 
-upload_file(your_label, remote_image_url, your_server_url)
+    parser = argparse.ArgumentParser(description="Upload a file to your server")
+    parser.add_argument("-f", "--file", help="File to upload", required=True)
+    parser.add_argument("-s", "--server", help="Server URL", required=True)
+    args = parser.parse_args()
+
+    localserver_url = "http://localhost:5000/upload"
+    upload_file(args.file, args.server, localserver_url)
+
+
