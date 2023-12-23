@@ -57,13 +57,16 @@ static camera_config_t camera_config = {
   .xclk_freq_hz = 15000000,
   .ledc_timer   = LEDC_TIMER_0,
   .ledc_channel = LEDC_CHANNEL_0,
-//   .pixel_format = PIXFORMAT_GRAYSCALE,
   .pixel_format = PIXFORMAT_JPEG,
-  // TODO: Why with 96x96 there is a crash with ***ERROR*** A stack overflow in task httpd has been detected. 
-  // TODO: Click on take picture from webserver and send the picture to the browser
-//   .frame_size   = FRAMESIZE_96X96,
-  .frame_size   = FRAMESIZE_VGA,//FRAMESIZE_96X96, //QQVGA-UXGA, For ESP32, do not use sizes above QVGA when not JPEG. The performance of the ESP32-S series has improved a lot, but JPEG mode always gives better frame rates.
-  .jpeg_quality = 10,//0-63, for OV series camera sensors, lower number means higher quality
+// For ESP32, do not use sizes above QVGA when not JPEG. The performance of the ESP32-S series has improved a lot, but JPEG mode always gives better frame rates.
+  .frame_size   = FRAMESIZE_QVGA,
+  .jpeg_quality = 30,//0-63, for OV series camera sensors, lower number means higher quality
+                    // NOTE: frame_size and jpeg_quality are related
+                    //       if FRAMESIZE_VGA, jpeg_quality=10
+                    //       if FRAMESIZE_HQVGA, jpeg_quality=15
+                    //       if FRAMESIZE_QQVGA, jpeg_quality=20
+                    //       if FRAMESIZE_96X96, jpeg_quality=60 (for this example is too low)
+                    // otherwise the camera will not work, and the error is not obvious
   .fb_count = 1, //When jpeg mode is used, if fb_count more than one, the driver will work in continuous mode.
   .fb_location  = CAMERA_FB_IN_DRAM, 
   .grab_mode = CAMERA_GRAB_LATEST,
@@ -104,13 +107,6 @@ esp_err_t jpg_stream_httpd_handler(httpd_req_t *req){
     uint8_t * _jpg_buf;
     char * part_buf[64];
 
-//    xEventGroupClearBits(evGroup, 1);
-// 
-//    while(xEventGroupGetBits(evGroup) != 0)
-//    {
-//        vTaskDelay(100/portTICK_PERIOD_MS);
-//    }
-
     static int64_t last_frame = 0;
     if(!last_frame) {
         last_frame = esp_timer_get_time();
@@ -146,7 +142,6 @@ esp_err_t jpg_stream_httpd_handler(httpd_req_t *req){
         }
         if(res == ESP_OK){
             size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
-
             res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
         }
         if(res == ESP_OK){
@@ -171,7 +166,6 @@ esp_err_t jpg_stream_httpd_handler(httpd_req_t *req){
         vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 
-//     xEventGroupSetBits(evGroup, 1);
     last_frame = 0;
     return res;
 }
