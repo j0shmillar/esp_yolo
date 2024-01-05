@@ -97,6 +97,12 @@ static esp_err_t init_camera(void)
         return err;
     }
 
+    sensor_t * s = esp_camera_sensor_get();
+    if ( s != NULL )
+    {
+        s->set_vflip(s, 1); //flip it back
+        s->set_special_effect(s, 2); // black and white
+    }
     return ESP_OK;
 }
 
