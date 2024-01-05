@@ -118,15 +118,22 @@ void setup() {
 #ifndef CLI_ONLY_INFERENCE
 // The name of this function is important for Arduino compatibility.
 void loop() {
+  MicroPrintf("Inference loop started\n");
   // Get image from provider.
   if (kTfLiteOk != GetImage(kNumCols, kNumRows, kNumChannels, input->data.int8)) {
     MicroPrintf("Image capture failed.");
   }
 
+  unsigned detect_time;
+  detect_time = esp_timer_get_time();
+
   // Run the model on this input and make sure it succeeds.
   if (kTfLiteOk != interpreter->Invoke()) {
     MicroPrintf("Invoke failed.");
   }
+
+  detect_time = (esp_timer_get_time() - detect_time)/1000;
+  MicroPrintf("Time required for the inference is %u ms", detect_time);
 
   TfLiteTensor* output = interpreter->output(0);
 
@@ -159,7 +166,7 @@ void loop() {
 
 void run_inference(void *ptr) {
   /* Convert from uint8 picture data to int8 */
-  for (int i = 0; i < kNumCols * kNumRows; i++) {
+  for (int i = 0; i < kNumCols * kNumRows * kNumChannels ; i++) {
     input->data.int8[i] = ((uint8_t *) ptr)[i] ^ 0x80;
   }
 
