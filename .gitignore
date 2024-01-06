@@ -50,3 +50,7 @@ dependencies.lock
 *.orig
 *.swp
 *.lock
+
+yolov5/
+*.pyc
+__pycache__/
