@@ -53,10 +53,10 @@ def plot_anchor_boxes(image, anchor_boxes):
     print(f'image_width: {image_width}, image_height: {image_height}')
     for anchor_box in anchor_boxes:
         print(f'anchor_box: {anchor_box}')
-        x = ( anchor_box[1] - anchor_box[3] / 2 ) * image_width
-        y = ( anchor_box[2] - anchor_box[4] / 2 ) * image_height
-        w = anchor_box[3] * image_width
-        h = anchor_box[4] * image_height
+        x = ( anchor_box[0] - anchor_box[2] / 2 ) * image_width
+        y = ( anchor_box[1] - anchor_box[3] / 2 ) * image_height
+        w = anchor_box[2] * image_width
+        h = anchor_box[3] * image_height
         rect = patches.Rectangle((x, y), w, h, linewidth=1, edgecolor='r', facecolor='none')
         ax.add_patch(rect)
     plt.show()  
@@ -96,10 +96,67 @@ def labels2grid( imgsize, labels , gridsize, num_classes=1):
         grid[grid_idx, 0, 3] = h
         grid[grid_idx, 0, 4] = 1 # confidence score
         grid[grid_idx, 0, 5 + c] = 1 # class score
-
-
     return grid
-    
+
+def anchor_to_box(image_width, image_height, anchor_box):
+    x1 = ( anchor_box[0] - anchor_box[2] / 2 ) * image_width
+    y1 = ( anchor_box[1] - anchor_box[3] / 2 ) * image_height
+    x2 = ( anchor_box[0] + anchor_box[2] / 2 ) * image_width
+    y2 = ( anchor_box[1] + anchor_box[3] / 2 ) * image_height
+    return [x1, y1, x2, y2]
+
+def non_maximum_suppression(predictions, confidence_threshold=0.5, iou_threshold=0.5, image_width=416, image_height=416):
+    # Define a helper function to calculate IoU (Intersection over Union)
+    def calculate_iou(prediction1, prediction2):
+        # Calculate intersection coordinates
+        box1 = anchor_to_box(image_width, image_height, prediction1)
+        box2 = anchor_to_box(image_width, image_height, prediction2)
+
+        x1 = max(box1[0], box2[0])
+        y1 = max(box1[1], box2[1])
+        x2 = min(box1[2], box2[2])
+        y2 = min(box1[3], box2[3])
+
+        # Calculate intersection area
+        intersection = max(0, x2 - x1 + 1) * max(0, y2 - y1 + 1)
+
+        # Calculate areas of each box
+        area_box1 = (box1[2] - box1[0] + 1) * (box1[3] - box1[1] + 1)
+        area_box2 = (box2[2] - box2[0] + 1) * (box2[3] - box2[1] + 1)
+
+        # Calculate union area
+        union = area_box1 + area_box2 - intersection
+
+        # Calculate IoU
+        iou = intersection / union
+        print(f'iou: {iou}')
+        return iou
+
+    # Filter predictions based on confidence threshold
+    filtered_predictions = [prediction for prediction in predictions if prediction[4] >= confidence_threshold]
+
+    # Sort predictions by confidence score (probability)
+    filtered_predictions.sort(key=lambda x: x[4], reverse=True)
+
+    # Apply Non-Maximum Suppression
+    selected_predictions = []
+    while len(filtered_predictions) > 0:
+        selected_predictions.append(filtered_predictions[0])
+
+        # Remove the selected prediction
+        del filtered_predictions[0]
+
+        # Apply NMS
+        iou = [calculate_iou(selected_predictions[-1], prediction) for prediction in filtered_predictions]
+        print(f'len(iou): {len(iou)}')
+        print(f'iou: {iou}')
+
+        filtered_predictions = [prediction for i, prediction in enumerate(filtered_predictions) if iou[i] < iou_threshold]
+       
+    return selected_predictions
+
+
+
 # Test iou function, given a tensor predict box and a ground truth box 
 # prediction shape: (batch_size, grid_size*grid_size, num_boxes, 4)
 # ground_truth shape: (batch_size, grid_size*grid_size, 1, 4)

@@ -1,5 +1,5 @@
 import tensorflow as tf
-import utils
+import modules.utils as utils
 
 # y has shape y = tf.reshape(y, (-1, self.grid_size*self.grid_size, self.num_boxes, 5 + nc))
 
