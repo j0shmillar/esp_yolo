@@ -79,24 +79,72 @@ def labels2grid( imgsize, labels , gridsize, num_classes=1):
 #         x, y, w, h, c = label # c is class index, y, x, h, w are normalized
         c, x, y, w, h = label # c is class index, y, x, h, w are normalized
 
-        # Convert box coordinate to grid coordinate
-        xb = int( x * gridsize[0] )
-        yb = int( y * gridsize[1] )
+#         # Convert box coordinate to grid coordinate
+#         xb = int( x * gridsize[0] )
+#         yb = int( y * gridsize[1] )
+# 
+#         # TODO: check this
+# #         # Convert box width and height to grid width and height
+# #         w = w * gridsize[0]
+# #         h = h * gridsize[1]
+# 
+#         grid_idx = yb * gridsize[0] + xb
+#         c = int(c)
+#         grid[grid_idx, 0, 0] = x
+#         grid[grid_idx, 0, 1] = y
+#         grid[grid_idx, 0, 2] = w
+#         grid[grid_idx, 0, 3] = h
+#         grid[grid_idx, 0, 4] = 1 # confidence score
+#         grid[grid_idx, 0, 5 + c] = 1 # class score
+#     return grid
 
-        # TODO: check this
-#         # Convert box width and height to grid width and height
-#         w = w * gridsize[0]
-#         h = h * gridsize[1]
+
+        cell_size = 1.0 / gridsize[0]
+        xb = int( x // cell_size )
+        yb = int( y // cell_size )
+
+        x_cell = x*gridsize[0] - xb
+        y_cell = y*gridsize[1] - yb
 
         grid_idx = yb * gridsize[0] + xb
+
         c = int(c)
-        grid[grid_idx, 0, 0] = x
-        grid[grid_idx, 0, 1] = y
+        grid[grid_idx, 0, 0] = x_cell
+        grid[grid_idx, 0, 1] = y_cell
         grid[grid_idx, 0, 2] = w
         grid[grid_idx, 0, 3] = h
         grid[grid_idx, 0, 4] = 1 # confidence score
         grid[grid_idx, 0, 5 + c] = 1 # class score
     return grid
+
+# TODO: this works if num_boxes = 1, because the for is wrong
+def convert_labels_grid_to_image_scale(grid_labels, grid_size, num_boxes=1):
+    image_scale_labels = np.zeros_like(grid_labels)
+
+    for i in range(grid_labels.shape[1]):
+        label = grid_labels[0, i]
+
+        confidence = label[4]
+        print(f'confidence: {confidence}')
+        if confidence > 0:
+            x_cell, y_cell, w, h = label[:4]
+            class_probs = label[5:]
+
+            grid_x = i // grid_size
+            grid_y = i % grid_size
+
+            x = (grid_x + x_cell) / grid_size # maybe is (grid_x - x_cell) / grid_size
+            y = (grid_y + y_cell) / grid_size
+
+            image_scale_labels[0, i, 0] = x
+            image_scale_labels[0, i, 1] = y
+            image_scale_labels[0, i, 2] = w
+            image_scale_labels[0, i, 3] = h
+            image_scale_labels[0, i, 4] = confidence
+
+            image_scale_labels[0, i, 5:] = class_probs
+
+    return image_scale_labels
 
 def anchor_to_box(image_width, image_height, anchor_box):
     x1 = ( anchor_box[0] - anchor_box[2] / 2 ) * image_width

@@ -9,8 +9,8 @@ import os
 import argparse
 
 # CONF_THRESHOLD = 0.5
-CONF_THRESHOLD = 0.0005
-IOU_THRESHOLD = 0.1
+CONF_THRESHOLD = 0.05
+IOU_THRESHOLD = 0.5
 
 def main(dataset, num_classes, imgsz, model):
     # load test dataset
@@ -40,18 +40,22 @@ def main(dataset, num_classes, imgsz, model):
         for i in range(x.shape[0]):
             pred = y_pred[i,:,:,:]
             print(f'pred.shape: {pred.shape}')
-            candidates = pred[pred[:,:, 4] >= CONF_THRESHOLD]
+            pred = utils.convert_labels_grid_to_image_scale(pred, grid_size = 4)
+            print(f'pred.shape after : {pred.shape}')
+#             candidates = pred[pred[:,:, 4] >= CONF_THRESHOLD]
+            candidates = pred
             print(f'candidates.shape: {candidates.shape}')
-
             if candidates.shape[0] == 0:
                 print('No candidates found')
                 continue
 
+            for j in range(candidates.shape[0]):
+                print(f'candidates[{j}]: {candidates[j]}')
+                utils.plot_anchor_boxes(x[i], candidates[j])
             # pred is a list
-            print(f'candidates shape: {candidates.shape}')
-            pred = utils.non_maximum_suppression(candidates, CONF_THRESHOLD, IOU_THRESHOLD, imgsz[0], imgsz[1])
+#             pred = utils.non_maximum_suppression(candidates, CONF_THRESHOLD, IOU_THRESHOLD, imgsz[0], imgsz[1])
             print(f'pred.shape: {np.array(pred).shape}')
-            utils.plot_anchor_boxes(x[i], pred)
+#             utils.plot_anchor_boxes(x[i], pred)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -59,7 +63,7 @@ if __name__ == '__main__':
                         , help='Dataset path')
     parser.add_argument('--num_classes', type=int, default=4
                         , help='Number of classes')
-    parser.add_argument('--imgsz', nargs='+', type=int, default=[160, 160]
+    parser.add_argument('--imgsz', nargs='+', type=int, default=[88,88]
                         , help='Image size')
     parser.add_argument('--model', type=str, default='results/model.keras'
                         , help='Model path')

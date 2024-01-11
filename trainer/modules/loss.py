@@ -40,8 +40,8 @@ def YOLO_Loss(y_true, y_pred, num_boxes, num_classes, lambda_coord=0.5, lambda_n
 
     # Reshape predictions to calculate objectness and no-objectness
 #     y_pred_conf = tf.reshape(y_pred_conf, [-1, grid_size*grid_size, num_boxes, 1])
-    pred_objectness = tf.sigmoid(y_pred_conf)  # TODO: check this
-
+#     pred_objectness = tf.sigmoid(y_pred_conf)  # TODO: check this
+    pred_objectness = y_pred_conf
 #     pred_objectness = y_pred_conf
 
     # Split true and predicted xy, wh
@@ -52,10 +52,10 @@ def YOLO_Loss(y_true, y_pred, num_boxes, num_classes, lambda_coord=0.5, lambda_n
 
     # Calculate box differences (predicted - true)
     box_diff = y_pred_xy - y_true_xy
-#     box_diff = tf.concat([box_diff, y_pred_wh - y_true_wh], axis=-1) # shape: (batch_size, grid_size*grid_size, num_boxes, 4)
-    sqrt_true_wh = tf.sqrt(y_true_wh)
-    sqrt_pred_wh = tf.sqrt(y_pred_wh) # Why here is NaN?
-    box_diff = tf.concat([box_diff, sqrt_pred_wh - sqrt_true_wh], axis=-1) # shape: (batch_size, grid_size*grid_size, num_boxes, 4)
+    box_diff = tf.concat([box_diff, y_pred_wh - y_true_wh], axis=-1) # shape: (batch_size, grid_size*grid_size, num_boxes, 4)
+#     sqrt_true_wh = tf.sqrt(y_true_wh)
+#     sqrt_pred_wh = tf.sqrt(y_pred_wh) # Why here is NaN?
+#     box_diff = tf.concat([box_diff, sqrt_pred_wh - sqrt_true_wh], axis=-1) # shape: (batch_size, grid_size*grid_size, num_boxes, 4)
 
     assert box_diff.shape[1:] == (grid_size*grid_size, num_boxes, 4)
 

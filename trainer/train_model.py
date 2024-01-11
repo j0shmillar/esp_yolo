@@ -108,8 +108,9 @@ def main( dataset_path, num_classes, grid, num_epochs, batch_size, learning_rate
     anchors = [ [(11,8), (25,18), (46,43)]]
 
     model = models.YOLO(first_out=16, nc=num_classes, anchors=anchors)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, clipvalue=0.5)
-
+#     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate, clipvalue=0.5)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate, 
+                                        weight_decay=0.0005)
     logs = train.train(model, train_dataset, val_dataset, loss.YOLO_Loss, optimizer, num_epochs)
 
     # plot logs
@@ -147,7 +148,7 @@ if __name__ == '__main__':
                         , help='Learning rate')
     parser.add_argument('--debug', type=bool, default=False
                         , help='Debug mode')
-    parser.add_argument('--imgsz', nargs='+', type=int, default=[160, 160]
+    parser.add_argument('--imgsz', nargs='+', type=int, default=[88, 88]
                         , help='Image size')
     args = parser.parse_args()
 
