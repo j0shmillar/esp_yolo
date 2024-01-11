@@ -52,7 +52,7 @@ constexpr int scratchBufSize = 0;
 #endif
 // An area of memory to use for input, output, and intermediate arrays.
 // constexpr int kTensorArenaSize = 100 * 1024 + scratchBufSize;
-constexpr int kTensorArenaSize = 50 * 1024 + scratchBufSize;
+constexpr int kTensorArenaSize = 80 * 1024 + scratchBufSize;
 static uint8_t *tensor_arena;//[kTensorArenaSize]; // Maybe we should move this to external
 }  // namespace
 
@@ -68,7 +68,10 @@ void setup() {
   }
 
   if (tensor_arena == NULL) {
-      printf("%s: free RAM size: %d, INTERNAL: %d, PSRAM: %d\n", "tag", heap_caps_get_free_size(MALLOC_CAP_8BIT), heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL), heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM));
+      printf("%s: free RAM size: %d, INTERNAL: %d, PSRAM: %d\n", "tag", 
+              heap_caps_get_free_size(MALLOC_CAP_8BIT), 
+              heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL), 
+              heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_SPIRAM));
     tensor_arena = (uint8_t *) heap_caps_malloc(kTensorArenaSize, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
   }
   if (tensor_arena == NULL) {
@@ -76,6 +79,7 @@ void setup() {
     return;
   }
 
+  MicroPrintf("Memory arena allocated\n");
   // Pull in only the operation implementations we need.
   // This relies on a complete list of all the ops needed by this graph.
   // An easier approach is to just use the AllOpsResolver, but this will
@@ -84,23 +88,18 @@ void setup() {
   //
   // tflite::AllOpsResolver resolver;
   // NOLINTNEXTLINE(runtime-global-variables)
-//   static tflite::MicroMutableOpResolver<5> micro_op_resolver;
-  static tflite::MicroMutableOpResolver<9> micro_op_resolver;
+  static tflite::MicroMutableOpResolver<10> micro_op_resolver;
+  micro_op_resolver.AddQuantize();
   micro_op_resolver.AddPad();
   micro_op_resolver.AddConv2D();
   micro_op_resolver.AddLogistic();
+  micro_op_resolver.AddMul();
   micro_op_resolver.AddConcatenation();
   micro_op_resolver.AddMaxPool2D();
-  micro_op_resolver.AddMul();
   micro_op_resolver.AddAdd();
   micro_op_resolver.AddReshape();
   micro_op_resolver.AddStridedSlice();
 
-//   micro_op_resolver.AddAveragePool2D();
-//   micro_op_resolver.AddDepthwiseConv2D();
-//   micro_op_resolver.AddReshape();
-//   micro_op_resolver.AddSoftmax();
-// 
   // Build an interpreter to run the model with.
   // NOLINTNEXTLINE(runtime-global-variables)
   static tflite::MicroInterpreter static_interpreter(
