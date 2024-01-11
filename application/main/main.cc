@@ -38,6 +38,6 @@ void tf_main(void) {
 }
 
 extern "C" void app_main() {
-  xTaskCreate((TaskFunction_t)&tf_main, "tf_main", 4 * 1024, NULL, 8, NULL);
+  xTaskCreate((TaskFunction_t)&tf_main, "tf_main", 10 * 1024, NULL, 8, NULL);
   vTaskDelete(NULL);
 }
