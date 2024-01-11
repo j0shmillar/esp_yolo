@@ -65,8 +65,10 @@ int app_camera_init() {
   config.pin_pwdn = CAMERA_PIN_PWDN;
   config.pin_reset = CAMERA_PIN_RESET;
   config.xclk_freq_hz = XCLK_FREQ_HZ;
-  config.jpeg_quality = 10;
-  config.fb_count = 2;
+//   config.jpeg_quality = 10;
+//   config.fb_count = 2;
+  config.jpeg_quality = 30;
+  config.fb_count = 1;
   config.fb_location = CAMERA_FB_IN_DRAM;
 //   config.fb_location = CAMERA_FB_IN_PSRAM;
 #endif // CONFIG_TFLITE_USE_BSP
@@ -77,6 +79,7 @@ int app_camera_init() {
   // With display support enabled, the pixel format is RGB565 to match the display. The frame is converted to grayscale before it is passed to the trained model.
   config.pixel_format = CAMERA_PIXEL_FORMAT;
   config.frame_size = CAMERA_FRAME_SIZE;
+  config.grab_mode = CAMERA_GRAB_LATEST;
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
