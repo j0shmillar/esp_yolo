@@ -57,10 +57,12 @@ static camera_config_t camera_config = {
   .xclk_freq_hz = 15000000,
   .ledc_timer   = LEDC_TIMER_0,
   .ledc_channel = LEDC_CHANNEL_0,
-  .pixel_format = PIXFORMAT_JPEG,
+//   .pixel_format = PIXFORMAT_JPEG,
+  .pixel_format = PIXFORMAT_RGB565, // gives better quality images
 // For ESP32, do not use sizes above QVGA when not JPEG. The performance of the ESP32-S series has improved a lot, but JPEG mode always gives better frame rates.
-  .frame_size   = FRAMESIZE_QVGA,
-  .jpeg_quality = 30,//0-63, for OV series camera sensors, lower number means higher quality
+//   .frame_size   = FRAMESIZE_QVGA,
+  .frame_size   = FRAMESIZE_96X96,
+  .jpeg_quality = 20,//0-63, for OV series camera sensors, lower number means higher quality
                     // NOTE: frame_size and jpeg_quality are related
                     //       if FRAMESIZE_VGA, jpeg_quality=10
                     //       if FRAMESIZE_HQVGA, jpeg_quality=15
@@ -101,7 +103,7 @@ static esp_err_t init_camera(void)
     if ( s != NULL )
     {
         s->set_vflip(s, 1); //flip it back
-        s->set_special_effect(s, 2); // black and white
+//         s->set_special_effect(s, 2); // black and white
     }
     return ESP_OK;
 }
@@ -189,6 +191,35 @@ static size_t jpg_encode_stream(void * arg, size_t index, const void* data, size
     return len;
 }
 
+// RGB565 handler
+esp_err_t rgb_httpd_handler(httpd_req_t *req){
+    camera_fb_t * fb = NULL;
+    esp_err_t res = ESP_OK;
+    size_t fb_len = 0;
+    int64_t fr_start = esp_timer_get_time();
+
+    fb = esp_camera_fb_get();
+    if (!fb) {
+        ESP_LOGE(TAG, "Camera capture failed");
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+
+    res = httpd_resp_set_type(req, "application/octet-stream");
+    if(res == ESP_OK){
+        res = httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg");
+    }
+
+    fb_len = fb->len;
+    res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
+
+    esp_camera_fb_return(fb);
+    int64_t fr_end = esp_timer_get_time();
+    ESP_LOGI(TAG, "RAW: %luKB %lums", (uint32_t)(fb_len/1024), (uint32_t)((fr_end - fr_start)/1000));
+    return res;
+
+}
+
 // JPEG HTTP Capture
 esp_err_t jpg_httpd_handler(httpd_req_t *req){
     camera_fb_t * fb = NULL;
@@ -228,7 +259,8 @@ esp_err_t jpg_httpd_handler(httpd_req_t *req){
 httpd_uri_t uri_get_picture = {
     .uri = "/picture",
     .method = HTTP_GET,
-    .handler = jpg_httpd_handler,
+    .handler = rgb_httpd_handler,
+//     .handler = jpg_httpd_handler,
     .user_ctx = NULL
 };
 
@@ -276,10 +308,10 @@ StreamServer::~StreamServer(){
 }
 
 void StreamServer::Start(){
-    httpd_handle_t stream_httpd = setup_stream_server();
-    if(stream_httpd == NULL){
-        ESP_LOGE(TAG, "Failed to start stream server");
-    }
+//     httpd_handle_t stream_httpd = setup_stream_server();
+//     if(stream_httpd == NULL){
+//         ESP_LOGE(TAG, "Failed to start stream server");
+//     }
     httpd_handle_t picture_httpd = setup_picture_server();
     if(picture_httpd == NULL){
         ESP_LOGE(TAG, "Failed to start picture server");
