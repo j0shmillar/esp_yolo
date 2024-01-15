@@ -10,6 +10,7 @@ idf_component_register(
         "main.cc"
         "main_functions.cc"
         "model_settings.cc"
+        "model_utils.cc"
         "person_detect_model_data.cc"
         "app_camera_esp.cc"
         "esp_cli.c"

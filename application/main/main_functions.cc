@@ -18,6 +18,7 @@ limitations under the License.
 #include "detection_responder.h"
 #include "image_provider.h"
 #include "model_settings.h"
+#include "model_utils.h"
 #include "person_detect_model_data.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_log.h"
@@ -54,6 +55,9 @@ constexpr int scratchBufSize = 0;
 // constexpr int kTensorArenaSize = 100 * 1024 + scratchBufSize;
 constexpr int kTensorArenaSize = 80 * 1024 + scratchBufSize;
 static uint8_t *tensor_arena;//[kTensorArenaSize]; // Maybe we should move this to external
+
+constexpr float kConfidenceThreshold = 0.5;
+constexpr float kIoUThreshold = 0.3;
 }  // namespace
 
 // The name of this function is important for Arduino compatibility.
@@ -131,7 +135,7 @@ void setup() {
 void loop() {
   MicroPrintf("Inference loop started\n");
   // Get image from provider.
-  if (kTfLiteOk != GetImage(kNumCols, kNumRows, kNumChannels, input->data.int8)) {
+  if (kTfLiteOk != GetImage(kNumCols, kNumRows, kNumChannels, input->data.uint8)) {
     MicroPrintf("Image capture failed.");
   }
 
@@ -147,6 +151,14 @@ void loop() {
   MicroPrintf("Time required for the inference is %u ms", detect_time);
 
   TfLiteTensor* output = interpreter->output(0);
+  printTensorDimensions(output);
+
+  std::vector<Prediction> predictions;
+  convertOutputToFloat(output, predictions);
+
+  auto nms_predictions = non_maximum_suppression(predictions, 
+          kConfidenceThreshold, kIoUThreshold,
+          kNumCols, kNumRows);
 
   // Process the inference results.
   int8_t person_score = output->data.uint8[kPersonIndex];
@@ -177,9 +189,9 @@ void loop() {
 
 void run_inference(void *ptr) {
   /* Convert from uint8 picture data to int8 */
-  for (int i = 0; i < kNumCols * kNumRows * kNumChannels ; i++) {
-    input->data.int8[i] = ((uint8_t *) ptr)[i] ^ 0x80;
-  }
+//   for (int i = 0; i < kNumCols * kNumRows * kNumChannels ; i++) {
+//     input->data.uint8[i] = ((uint8_t *) ptr)[i] ^ 0x80;
+//   }
 
 #if defined(COLLECT_CPU_STATS)
   long long start_time = esp_timer_get_time();
@@ -212,6 +224,9 @@ void run_inference(void *ptr) {
 #endif
 
   TfLiteTensor* output = interpreter->output(0);
+
+// print output size
+  printTensorDimensions(output);
 
   // Process the inference results.
   int8_t person_score = output->data.uint8[kPersonIndex];

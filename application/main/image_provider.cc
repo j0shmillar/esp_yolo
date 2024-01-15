@@ -72,7 +72,8 @@ void *image_provider_get_display_buf()
 }
 
 // Get an image from the camera module
-TfLiteStatus GetImage(int image_width, int image_height, int channels, int8_t* image_data) {
+TfLiteStatus GetImage(int image_width, int image_height, int channels, uint8_t* image_data) {
+// TODO: convert from rgb565 to rgb888
 #if ESP_CAMERA_SUPPORTED
   camera_fb_t* fb = esp_camera_fb_get();
   if (!fb) {
@@ -113,10 +114,12 @@ TfLiteStatus GetImage(int image_width, int image_height, int channels, int8_t* i
 #else // DISPLAY_SUPPORT
   MicroPrintf("Image Captured\n");
   // We have initialised camera to grayscale
-  // Just quantize to int8_t
+  // Just quantize to uint8_t
   for (int i = 0; i < image_width * image_height * channels; i++) {
-    image_data[i] = ((uint8_t *) fb->buf)[i] ^ 0x80;
+    image_data[i] = ((uint8_t *) fb->buf)[i];
   }
+//     image_data[i] = ((uint8_t *) fb->buf)[i] ^ 0x80;
+//   }
 #endif // DISPLAY_SUPPORT
 
   esp_camera_fb_return(fb);
