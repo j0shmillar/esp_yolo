@@ -37,7 +37,41 @@ void tf_main(void) {
 #endif
 }
 
+#include "driver/gpio.h"
+
+#define GPIO_LED_RED    GPIO_NUM_21
+#define GPIO_LED_WHITE  GPIO_NUM_22 
+
+void gpio_led_init(void) {
+  gpio_config_t io_conf;
+  io_conf.mode = GPIO_MODE_OUTPUT;
+  io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+  io_conf.intr_type = GPIO_INTR_DISABLE;
+  io_conf.pin_bit_mask = (1LL << GPIO_LED_RED) | (1LL << GPIO_LED_WHITE);
+  gpio_config(&io_conf);
+}
+
+void gpio_led_set(int red, int white) {
+  gpio_set_level(GPIO_LED_RED, red);
+  gpio_set_level(GPIO_LED_WHITE, white);
+}
+
+void gpio_led_toggle(void) {
+  static int toggle = 0;
+  toggle = !toggle;
+  gpio_led_set(toggle, toggle);
+}
+
+void gpio_led_task(void *pvParameter) {
+    gpio_led_init();
+    while (true) {
+      gpio_led_toggle();
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
 extern "C" void app_main() {
-  xTaskCreate((TaskFunction_t)&tf_main, "tf_main", 10 * 1024, NULL, 8, NULL);
+//   xTaskCreate((TaskFunction_t)&tf_main, "tf_main", 10 * 1024, NULL, 8, NULL);
+    xTaskCreate((TaskFunction_t)&gpio_led_task, "gpio_led_task", 1024, NULL, 8, NULL);
   vTaskDelete(NULL);
 }
