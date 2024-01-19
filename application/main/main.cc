@@ -20,6 +20,7 @@ limitations under the License.
 #include "freertos/task.h"
 
 #include "esp_main.h"
+#include "driver/gpio.h"
 
 #if CLI_ONLY_INFERENCE
 #include "esp_cli.h"
@@ -37,7 +38,6 @@ void tf_main(void) {
 #endif
 }
 
-#include "driver/gpio.h"
 
 #define GPIO_LED_RED    GPIO_NUM_21
 #define GPIO_LED_WHITE  GPIO_NUM_22 
@@ -70,8 +70,20 @@ void gpio_led_task(void *pvParameter) {
     }
 }
 
+// ----------------------------------------------------------------------
+// BLE  with ESP32
+// ----------------------------------------------------------------------
+#include "nimble.h"
 extern "C" void app_main() {
-//   xTaskCreate((TaskFunction_t)&tf_main, "tf_main", 10 * 1024, NULL, 8, NULL);
-    xTaskCreate((TaskFunction_t)&gpio_led_task, "gpio_led_task", 1024, NULL, 8, NULL);
-  vTaskDelete(NULL);
+   startNVS();
+   startBLE();
+
+    xTaskCreate((TaskFunction_t)&vTasksendNotification, "vTasksendNotification", 4096, NULL, 1, NULL);
+    vTaskDelete(NULL);
 }
+
+// extern "C" void app_main() {
+// //   xTaskCreate((TaskFunction_t)&tf_main, "tf_main", 10 * 1024, NULL, 8, NULL);
+//     xTaskCreate((TaskFunction_t)&gpio_led_task, "gpio_led_task", 1024, NULL, 8, NULL);
+//   vTaskDelete(NULL);
+// }
