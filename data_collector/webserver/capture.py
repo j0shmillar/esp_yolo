@@ -20,8 +20,12 @@ def signal_handler(sig, frame):
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
+    server_url = os.environ.get('ESP32_SERVER_URL')
+    if server_url is None:
+        print("Please set the ESP32_SERVER_URL environment variable.")
+        sys.exit(1)
 
-    server_url = 'http://192.168.178.53:81/picture'
+    server_url = server_url + '/picture'
     output_directory = 'static/uploads/'
     
     last_image_number = get_latest_image_number(output_directory)
