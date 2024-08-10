@@ -19,8 +19,9 @@ limitations under the License.
 #include <esp_log.h>
 #include <esp_timer.h>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+// #include "freertos/FreeRTOS.h"
+// #include "freertos/task.h"
+// #include "freertos/queue.h"
 #include "image_provider.h"
 #include "model.h"
 #include "model_settings.h"
@@ -125,7 +126,7 @@ void setup() {
 }
 
 // The name of this function is important for Arduino compatibility.
-void loop() {
+void ml_task(QueueHandle_t xQueue) {
   MicroPrintf("Inference loop started\n");
   // Get image from provider.
   if (kTfLiteOk !=
@@ -161,8 +162,26 @@ void loop() {
   auto detection_classes =
       get_detection_classes(nms_predictions, kConfidenceThreshold);
 
+  //   for (auto detection_class : detection_classes) {
+  //     MicroPrintf("Detected %s", kCategoryLabels[detection_class]);
+  //   }
+
+  //   if (nms_predictions.size() > 0) {
+  //     int value = nms_predictions.size();
+  //     xQueueOverwrite(xQueue, &value);
+  //   }
+  //
+
+  // if there are any "big" objects detected, send a message to the queue
+  bool big_detected = false;
   for (auto detection_class : detection_classes) {
-    MicroPrintf("Detected %s", kCategoryLabels[detection_class]);
+    if (detection_class == 2) {
+      big_detected = true;
+      break;
+    }
   }
+
+  xQueueOverwrite(xQueue, &big_detected);
+
   vTaskDelay(1);  // to avoid watchdog trigger
 }
