@@ -11,30 +11,7 @@ This project focuses on using the ESP-EYE and a computer vision algorithm runnin
 Follow the [ESP-IDF Get Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/linux-macos-setup.html) to set up the toolchain and install the ESP-IDF framework.
 
 ## 2. Data Collection 
-Navigate to the `data_collector` folder. Here’s an overview of its structure:
-
-```shell
-data_collector/
-├── datasets/
-│   ├── images/
-│   ├── labels/
-│   ├── convert_model_to_tflite.py
-│   ├── split_dataset.py
-│   └── utils.py
-├── esp32/
-│   ├── build/
-│   ├── CMakeLists.txt
-│   ├── main/
-│   ├── sdkconfig
-│   └── sdkconfig.old
-├── labels.txt
-└── webserver/
-    ├── capture.py
-    ├── static/
-    ├── templates/
-    ├── uploader.py
-    └── webserver.py
-```
+Navigate to the `data_collector` folder.
 
 ### Flashing the ESP32
 
