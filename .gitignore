@@ -59,7 +59,6 @@ dependencies.lock
 *.lock
 
 # Related to python
-yolov5/
 *.pyc
 __pycache__/
 .python-version
