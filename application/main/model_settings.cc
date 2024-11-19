@@ -15,8 +15,4 @@ limitations under the License.
 
 #include "model_settings.h"
 
-const char* kCategoryLabels[kCategoryCount] = {
-    "black",
-    "small",
-    "big",
-};
+const char* kCategoryLabels[kCategoryCount] = {"person"};

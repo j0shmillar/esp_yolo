@@ -20,10 +20,6 @@ set(ENV{TFLITE_USE_BSP_KALUGA} "false")
 # target and idf_version can be in the if-clause
 if(EXISTS ${CMAKE_CURRENT_LIST_DIR}/sdkconfig)
     file(READ ${CMAKE_CURRENT_LIST_DIR}/sdkconfig SDKCONFIG_RULE)
-
-    add_bsp("${SDKCONFIG_RULE}" "TFLITE_USE_BSP_S3_EYE" "esp32s3")
-    add_bsp("${SDKCONFIG_RULE}" "TFLITE_USE_BSP_KORVO_2" "esp32s3")
-    add_bsp("${SDKCONFIG_RULE}" "TFLITE_USE_BSP_KALUGA" "esp32s2")
 endif()
 
 project(application)

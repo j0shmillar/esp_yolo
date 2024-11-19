@@ -30,12 +30,15 @@ limitations under the License.
 #include "model_settings.h"
 #include "model_utils.h"
 
+#define RGB565_BYTES_PER_PIXEL 2
+
 static const char *TAG = "app_camera";
 
 static uint16_t *display_buf;  // buffer to hold data to be sent to display
 
 // Get the camera module ready
-TfLiteStatus InitCamera() {
+TfLiteStatus InitCamera() 
+{
   int ret = app_camera_init();
   if (ret != 0) {
     MicroPrintf("Camera init failed\n");
@@ -47,19 +50,19 @@ TfLiteStatus InitCamera() {
 
 void *image_provider_get_display_buf() { return (void *)display_buf; }
 
-TfLiteStatus GetImage(int image_width, int image_height, int channels,
-                      uint8_t *image_data) {
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (!fb) {
-    ESP_LOGE(TAG, "Camera capture failed");
-    return kTfLiteError;
-  }
+TfLiteStatus GetImage(int image_width, int image_height, int channels, uint8_t *image_data) 
+{
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb) 
+    {
+      ESP_LOGE(TAG, "Camera capture failed");
+      return kTfLiteError;
+    }
 
-  // Convert RGB565 to RGB888
-  convert_rgb565_to_rgb888((uint8_t *)fb->buf, image_data, image_width,
-                           image_height);
-
-  /* here the esp camera can give you grayscale image directly */
-  esp_camera_fb_return(fb);
-  return kTfLiteOk;
+    // Convert RGB565 to RGB888
+    convert_rgb565_to_rgb888((uint8_t *)fb->buf, image_data, image_width, image_height);
+    
+    /* here the esp camera can give you grayscale image directly */
+    esp_camera_fb_return(fb);
+    return kTfLiteOk;
 }

@@ -12,7 +12,7 @@ idf_component_register(
         "model_utils.cc"
 		"model.cc"
         "app_camera_esp.cc"
-        "ble_service.cc"
+       
 
-    PRIV_REQUIRES console static_images spi_flash nvs_flash bt
+    PRIV_REQUIRES console static_images spi_flash nvs_flash bt esp_psram
     INCLUDE_DIRS "")

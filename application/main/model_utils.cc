@@ -37,8 +37,7 @@ float calculate_iou(const Prediction& prediction1,
 std::vector<Prediction> non_maximum_suppression(
     const std::vector<Prediction>& predictions, float confidence_threshold,
     float iou_threshold, int image_width, int image_height) {
-  //     MicroPrintf("Number of predictions before confidence threshold: %d\n",
-  //     predictions.size());
+    MicroPrintf("Number of predictions before confidence threshold: %d\n", predictions.size());
   // some predictions may have width and height equal to 0, we need to filter
   // them out because they will cause an IoU of 0 with any other prediction, and
   // will be selected in the non-maximum suppression
@@ -55,8 +54,7 @@ std::vector<Prediction> non_maximum_suppression(
       predictions.begin(),
       std::partition(predictions.begin(), predictions.end(), is_confident));
 
-  //     MicroPrintf("Number of predictions before NMS: %d\n",
-  //     filtered_predictions.size());
+  MicroPrintf("Number of predictions before NMS: %d\n", filtered_predictions.size());
 
   std::sort(filtered_predictions.begin(), filtered_predictions.end(),
             [](const Prediction& a, const Prediction& b) {

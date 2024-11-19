@@ -9,9 +9,12 @@ from tqdm import tqdm
 from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 random.seed(108)
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+class_labels = {0:'person'}
 
 # Defining a function to calculate Intersection over Union (IoU)
 def iou(box1, box2, is_pred=True):

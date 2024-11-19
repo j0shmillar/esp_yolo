@@ -48,8 +48,8 @@ TfLiteTensor* input = nullptr;
 constexpr int kTensorArenaSize = 81 * 1024;
 static uint8_t* tensor_arena;  // Maybe we should move this to external
 
-constexpr float kConfidenceThreshold = 0.5;
-constexpr float kIoUThreshold = 0.3;
+constexpr float kConfidenceThreshold = 0.3;
+constexpr float kIoUThreshold = 0.5;
 }  // namespace
 
 // The name of this function is important for Arduino compatibility.
@@ -139,7 +139,8 @@ void ml_task(QueueHandle_t xQueue) {
 
   MicroPrintf("Invoking the interpreter\n");
   // Run the model on this input and make sure it succeeds.
-  if (kTfLiteOk != interpreter->Invoke()) {
+  if (kTfLiteOk != interpreter->Invoke()) 
+  {
     MicroPrintf("Invoke failed.");
   }
 
@@ -147,7 +148,7 @@ void ml_task(QueueHandle_t xQueue) {
   MicroPrintf("Time required for the inference is %u ms", detect_time);
 
   TfLiteTensor* output = interpreter->output(0);  // CHECK
-  //     printTensorDimensions(output);
+  printTensorDimensions(output);
 
   std::vector<Prediction> predictions;
   convertOutputToFloat(output, predictions, kCategoryCount);  //<< BUG
@@ -173,15 +174,17 @@ void ml_task(QueueHandle_t xQueue) {
   //
 
   // if there are any "big" objects detected, send a message to the queue
-  bool big_detected = false;
+  bool person_detected = false;
   for (auto detection_class : detection_classes) {
-    if (detection_class == 2) {
-      big_detected = true;
+    if (detection_class == 0) 
+    {
+      person_detected = true;
+      MicroPrintf("Person detected");
       break;
     }
   }
 
-  xQueueOverwrite(xQueue, &big_detected);
+  xQueueOverwrite(xQueue, &person_detected);
 
   vTaskDelay(1);  // to avoid watchdog trigger
 }

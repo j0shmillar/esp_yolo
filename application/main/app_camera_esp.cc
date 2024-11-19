@@ -16,9 +16,6 @@ limitations under the License.
 #include "app_camera_esp.h"
 
 #include "sdkconfig.h"
-#if (CONFIG_TFLITE_USE_BSP)
-#include "bsp/esp-bsp.h"
-#endif
 
 static const char *TAG = "app_camera";
 
@@ -57,12 +54,12 @@ int app_camera_init() {
   config.pin_reset = CAMERA_PIN_RESET;
   config.xclk_freq_hz = XCLK_FREQ_HZ;
   config.fb_count = 1;
-  config.jpeg_quality = 20;
-  config.fb_location = CAMERA_FB_IN_DRAM;
-
-  config.pixel_format = CAMERA_PIXEL_FORMAT;
-  config.frame_size = CAMERA_FRAME_SIZE;
+  config.jpeg_quality = 1;
+  config.fb_location = CAMERA_FB_IN_PSRAM;
   config.grab_mode = CAMERA_GRAB_LATEST;
+
+  config.pixel_format = PIXFORMAT_RGB565;
+  config.frame_size = FRAMESIZE_96X96;
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
@@ -72,12 +69,11 @@ int app_camera_init() {
     return -1;
   }
   sensor_t *s = esp_camera_sensor_get();
-  s->set_vflip(s,
-               1);  // flip it back
-                    //    s->set_brightness(s, 1);  //up the blightness just a
-                    //    bit s->set_saturation(s, -2); //lower the saturation
-                    // initial sensors are flipped vertically and colors are a
-                    // bit saturated
+  s->set_vflip(s, 1);  // flip it back
+                      //    s->set_brightness(s, 1);  //up the blightness just a
+                      //    bit s->set_saturation(s, -2); //lower the saturation
+                       // initial sensors are flipped vertically and colors are a
+                        // bit saturated
   MicroPrintf("Camera init success\n");
   return 0;
 }

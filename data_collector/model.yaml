@@ -4,7 +4,7 @@
 ####################################################################################################
 
 # Parameters
-nc: 4  # number of classes
+nc: 1  # number of classes
 depth_multiple: 0.17  # model depth multiple
 width_multiple: 0.12  # layer channel multiple
 anchors:

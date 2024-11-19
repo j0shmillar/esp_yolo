@@ -27,7 +27,7 @@ constexpr int kNumChannels = 3;
 
 constexpr int kMaxImageSize = kNumCols * kNumRows * kNumChannels;
 
-constexpr int kCategoryCount = 3;
+constexpr int kCategoryCount = 1;
 extern const char* kCategoryLabels[kCategoryCount];
 
 #endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_PERSON_DETECTION_MODEL_SETTINGS_H_
